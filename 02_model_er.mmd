@@ -1,0 +1,90 @@
+erDiagram
+    dim_supplier ||--o{ fct_po_line : "версия на дату заказа (supplier_sk)"
+    map_supplier_master }o--|{ dim_supplier : "master_supplier_id: код 1С → версии мастера"
+    dim_item ||--o{ fct_po_line : item_id
+    dim_uom ||--o{ fct_po_line : uom_code
+    dim_uom ||--o{ dim_item : uom_code
+    fx_rate_daily ||--o{ fct_po_line : "currency + order_date"
+    fct_po_line ||--o{ fct_receipt : "order_id + line_no"
+    fct_po_line ||--o| mart_otif_line : "активные строки, plan_date <= as_of"
+
+    map_supplier_master {
+        text supplier_id PK "код из 1С"
+        text master_supplier_id "golden record"
+        text inn
+        bool is_duplicate
+    }
+    dim_supplier {
+        bigint supplier_sk PK
+        text master_supplier_id
+        text inn
+        text supplier_name
+        text region
+        char reliability_class "A/B/C"
+        date valid_from
+        date valid_to "9999-12-31 = текущая"
+        bool is_current
+    }
+    dim_item {
+        text item_id PK
+        text item_name
+        text category
+        text category_reported "для сверки"
+        text uom_code FK
+        text base_uom "PCS/KG/M"
+        bool is_in_catalog "false = заглушка"
+    }
+    dim_uom {
+        text uom_code PK
+        text base_uom
+        numeric factor_to_base
+    }
+    fx_rate_daily {
+        date rate_date PK
+        char currency PK
+        numeric rate_to_rub
+        date source_rate_date "протяжка выходных"
+    }
+    fct_po_line {
+        text order_id PK
+        int line_no PK
+        text master_supplier_id
+        bigint supplier_sk FK
+        text item_id FK
+        date order_date
+        char currency
+        numeric fx_rate_to_rub
+        text uom_code FK
+        numeric qty
+        numeric qty_base
+        numeric price
+        numeric amount_rub
+        numeric price_per_base_rub
+        date planned_delivery_date
+        text status "active/cancelled"
+        int version_cnt
+        bool dq_flags "item_unknown, uom_incompatible, fx_suspect, scd_gap"
+    }
+    fct_receipt {
+        text receipt_id PK "event_id"
+        text order_id FK
+        int line_no FK
+        timestamptz received_at_utc
+        date received_date_msk
+        numeric qty_received
+        text quality_status
+        text warehouse_code
+        bool dq_flags "line_cancelled, before_order"
+    }
+    mart_otif_line {
+        text order_id PK
+        int line_no PK
+        text master_supplier_id
+        date planned_delivery_date
+        numeric qty_ordered
+        numeric qty_accepted_on_time
+        bool is_on_time
+        bool is_in_full
+        bool is_otif
+        date as_of_date
+    }
