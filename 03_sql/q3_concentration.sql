@@ -32,7 +32,8 @@ shares as (
     select t.*,
            t.amount_rub / sum(t.amount_rub) over (partition by t.category)                 as share,
            row_number() over (partition by t.category order by t.amount_rub desc, t.master_supplier_id) as rn,
-           -- ROWS, а не RANGE (по умолчанию): при равных суммах RANGE отдал бы обоим одинаковую накопленную долю.
+           -- Явно ROWS, а не RANGE (по умолчанию). С уникальным тай-брейкером ниже результаты совпадают, но если его
+           -- убрать, RANGE отдаст поставщикам с равной суммой одинаковую накопленную долю. ROWS фиксирует намерение.
            -- master_supplier_id — тай-брейкер, чтобы порядок был детерминированным.
            sum(t.amount_rub) over (partition by t.category
                                    order by t.amount_rub desc, t.master_supplier_id
